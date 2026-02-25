@@ -104,7 +104,7 @@
 
         .card-front {
             background-color: #fff; /* Backup-Farbe, falls Bild nicht lädt */
-            background-image: url('Logo.png'); /* Hier dein Logo einfügen */
+            background-image: url('../../Projektmanagement-Memory/Logo.png'); /* Hier dein Logo einfügen */
             background-size: cover;       /* Logo skaliert auf volle Fläche */
             background-position: center;  /* Logo mittig */
             border-radius:15px;
@@ -131,7 +131,7 @@
 <!-- Startmenü -->
 <div class="start-menu" id="startMenu">
     <!-- Logo links oben -->
-    <img src="Logo.png" alt="Flip & Learn Logo" style="position:absolute; top:15px; left:15px; width:120px; height:auto;"><!-- Info Button rechts oben -->
+    <img src="../../Projektmanagement-Memory/Logo.png" alt="Flip & Learn Logo" style="position:absolute; top:15px; left:15px; width:120px; height:auto;"><!-- Info Button rechts oben -->
     <button id="infoBtn" style="
         position:absolute;
         top:15px;
@@ -152,8 +152,8 @@
         <option value="1v1">1v1</option>
         <option value="2v2">1v1v1v1</option>
     </select>
-    <p>Eigene Memory-Paare sind Pflicht! (Format: z.B. Hauptstadt Peru:Lima, Berlin:Deutschland)</p>
-    <textarea id="customInput" placeholder="Eigene Karten eingeben" required></textarea>
+    <p>Eigene Memory-Paare (Format: z.B. Hauptstadt Peru:Lima, Berlin:Deutschland)</p>
+    <textarea id="customInput" placeholder="Eigene Karten..." required></textarea>
     <br>
     <button onclick="startGame()">Spiel starten</button>
 </div>
@@ -308,14 +308,27 @@
         if(!firstCard){ firstCard=card; } else {
             secondCard=card; lock=true;
             if(firstCard.dataset.set === secondCard.dataset.set){
+
+                clearInterval(turnTimer);          // ⛔ Timer stoppen
+                startTurnTimer();                  // 🔄 Timer resetten & neu starten
+
                 scores[currentPlayer-1]++;
                 if(riskActive){scores[currentPlayer-1]++; riskActive=false;}
-                canDouble=true; updateScore(); resetTurn(); checkGameEnd();
+                canDouble=true;
+                updateScore();
+                resetTurn();
+                checkGameEnd();
             } else {
                 setTimeout(()=>{
-                    firstCard.classList.remove("flipped"); secondCard.classList.remove("flipped");
+                    firstCard.classList.remove("flipped");
+                    secondCard.classList.remove("flipped");
                     if(riskActive){ scores[currentPlayer-1]--; if(scores[currentPlayer-1]<0) scores[currentPlayer-1]=0; }
-                    riskActive=false; canDouble=false; nextPlayer(); updateScore(); resetTurn();
+                    riskActive=false; canDouble=false;
+                    nextPlayer();
+                    clearInterval(turnTimer);
+                    startTurnTimer();
+                    updateScore();
+                    resetTurn();
                 },800);
             }
         }
