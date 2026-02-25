@@ -1,0 +1,288 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>Advanced Memory</title>
+    <style>
+        body { font-family: Arial; text-align: center; background:#f4f4f4; }
+        .grid {
+            display: grid;
+            grid-template-columns: repeat(4, 100px);
+            gap: 10px;
+            justify-content: center;
+            margin-top: 20px;
+        }
+        .card {
+            width: 100px;
+            height: 100px;
+            background: #444;
+            color: white;
+            font-size: 35px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+        }
+        .flipped { background: white; color: black; }
+
+        button, select {
+            margin: 5px;
+            padding: 8px;
+            font-size: 14px;
+        }
+    </style>
+</head>
+<body>
+
+<h1>Memory Game</h1>
+
+<select id="mode">
+    <option value="single">Singleplayer</option>
+    <option value="1v1">1v1</option>
+    <option value="2v2">2v2</option>
+</select>
+
+<h2 id="player">Spieler 1 ist dran</h2>
+<h3 id="score">Punkte: 0</h3>
+<h3 id="round">Rundenpunkte: 0</h3>
+
+<button onclick="doubleOrNothing()">Doppelt oder Nichts</button>
+<button onclick="bankPoints()">Punkte sichern</button>
+
+<h3>Eigene Memorys erstellen (mit Komma trennen)</h3>
+<input type="text" id="customInput"
+       placeholder="z.B. 🍎,🚗,🐶,⚽">
+<button onclick="createCustomGame()">Start mit eigenen Karten</button>
+
+<div class="grid" id="grid"></div>
+<script>
+    let baseSymbols = ["🍎","🚗","🐶","⚽","🎲","🎵","🌟","🍕"];
+    let symbols = [...baseSymbols, ...baseSymbols];
+    symbols.sort(() => 0.5 - Math.random());
+
+    let firstCard = null;
+    let secondCard = null;
+    let lock = false;
+
+    let currentPlayer = 1;
+    let scores = [0,0,0,0];
+
+    let canDouble = false;
+    let riskActive = false;
+
+    const grid = document.getElementById("grid");
+
+    function buildBoard(symbolArray) {
+        grid.innerHTML = "";
+        symbolArray.sort(() => 0.5 - Math.random());
+
+        symbolArray.forEach(symbol => {
+            const card = document.createElement("div");
+            card.classList.add("card");
+            card.dataset.symbol = symbol;
+            card.innerText = "";
+
+            card.addEventListener("click", () => handleClick(card, symbol));
+
+            grid.appendChild(card);
+        });
+    }
+
+    function handleClick(card, symbol) {
+        if (lock || card.innerText !== "") return;
+
+        card.innerText = symbol;
+        card.classList.add("flipped");
+
+        if (!firstCard) {
+            firstCard = card;
+        } else {
+            secondCard = card;
+            lock = true;
+
+            if (firstCard.dataset.symbol === secondCard.dataset.symbol) {
+
+                scores[currentPlayer - 1]++;
+
+                if (riskActive) {
+                    scores[currentPlayer - 1]++;
+                    riskActive = false;
+                }
+
+                canDouble = true;
+                updateScore();
+                resetTurn();
+
+            } else {
+                setTimeout(() => {
+                    firstCard.innerText = "";
+                    secondCard.innerText = "";
+                    firstCard.classList.remove("flipped");
+                    secondCard.classList.remove("flipped");
+
+                    if (riskActive) {
+                        scores[currentPlayer - 1]--;
+                        if (scores[currentPlayer - 1] < 0)
+                            scores[currentPlayer - 1] = 0;
+                    }
+
+                    riskActive = false;
+                    canDouble = false;
+                    nextPlayer();
+                    updateScore();
+                    resetTurn();
+
+                }, 800);
+            }
+        }
+    }
+
+
+
+    function resetTurn() {
+        firstCard = null;
+        secondCard = null;
+        lock = false;
+    }
+
+    function nextPlayer() {
+        const mode = document.getElementById("mode").value;
+
+        if (mode === "single") return;
+
+        if (mode === "1v1") {
+            currentPlayer = currentPlayer === 1 ? 2 : 1;
+        }
+
+        if (mode === "2v2") {
+            currentPlayer++;
+            if (currentPlayer > 4) currentPlayer = 1;
+        }
+
+        updatePlayer();
+    }
+
+    function updatePlayer() {
+        document.getElementById("player").innerText =
+            "Spieler " + currentPlayer + " ist dran";
+    }
+
+    function updateScore() {
+        const mode = document.getElementById("mode").value;
+
+        if (mode === "single") {
+            document.getElementById("score").innerText =
+                "Gesamtpunkte: " + scores[0];
+        }
+
+        if (mode === "1v1") {
+            document.getElementById("score").innerText =
+                "P1: " + scores[0] +
+                " | P2: " + scores[1];
+        }
+
+        if (mode === "2v2") {
+            document.getElementById("score").innerText =
+                "P1: " + scores[0] +
+                " | P2: " + scores[1] +
+                " | P3: " + scores[2] +
+                " | P4: " + scores[3];
+        }
+    }
+
+    function doubleOrNothing() {
+        if (canDouble && !riskActive) {
+            riskActive = true;
+            canDouble = false;
+        }
+    }
+
+    function createCustomGame() {
+        let input = document.getElementById("customInput").value.trim();
+        if (!input) {
+            alert("Bitte Werte eingeben!");
+            return;
+        }
+
+        // Input: "Frage1:Antwort1,Frage2:Antwort2"
+        let items = input.split(",").map(i => i.trim()).filter(i => i !== "");
+        if (items.length < 1) {
+            alert("Mindestens 1 Karte eingeben!");
+            return;
+        }
+
+        // Neues Kartenarray bauen
+        let newSymbols = [];
+        items.forEach((pair, index) => {
+            let [front, back] = pair.split(":").map(x => x.trim());
+            if (!front || !back) return;
+
+            // Paar erstellen (wie normale Paare)
+            newSymbols.push({symbol: front, answer: back, set: "C" + index});
+            newSymbols.push({symbol: front, answer: back, set: "C" + index});
+        });
+
+        // Spielzustand zurücksetzen
+        scores = [0, 0, 0, 0];
+        currentPlayer = 1;
+        firstCard = null;
+        lock = false;
+        canDouble = false;
+        riskActive = false;
+        updatePlayer();
+        updateScore();
+
+        // Board bauen
+        grid.innerHTML = "";
+        newSymbols.sort(() => 0.5 - Math.random());
+
+        newSymbols.forEach(obj => {
+            const card = document.createElement("div");
+            card.classList.add("card");
+            card.dataset.set = obj.set;
+            card.dataset.symbol = obj.symbol;
+            card.dataset.answer = obj.answer;
+            card.innerText = "";
+
+            card.addEventListener("click", () => {
+                if (lock || card.innerText !== "") return;
+
+                card.innerText = obj.answer; // Antwort beim Aufdecken
+                card.classList.add("flipped");
+
+                if (!firstCard) {
+                    firstCard = card;
+                } else {
+                    if (firstCard.dataset.answer === card.dataset.answer) {
+                        // Treffer → Punkte zählen wie vorher
+                        scores[currentPlayer - 1]++;
+                        if (riskActive) {
+                            scores[currentPlayer - 1]++;
+                            riskActive = false;
+                        }
+                        canDouble = true;
+                        updateScore();
+                        firstCard = null;
+                    } else {
+                        // Falsches Paar → beide schließen sich
+                        lock = true;
+                        setTimeout(() => {
+                            firstCard.innerText = "";
+                            card.innerText = "";
+                            firstCard.classList.remove("flipped");
+                            card.classList.remove("flipped");
+                            firstCard = null;
+                            lock = false;
+                            nextPlayer();
+                        }, 800);
+                    }
+                }
+            });
+
+            grid.appendChild(card);
+        });
+    }
+</script>
+
+</body>
+</html>
