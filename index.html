@@ -1,286 +1,374 @@
 <!DOCTYPE html>
-<html>
+<html lang="de">
 <head>
     <meta charset="UTF-8">
-    <title>Advanced Memory</title>
+    <title>Flip & Learn</title>
     <style>
-        body { font-family: Arial; text-align: center; background:#f4f4f4; }
-        .grid {
-            display: grid;
-            grid-template-columns: repeat(4, 100px);
-            gap: 10px;
-            justify-content: center;
-            margin-top: 20px;
-        }
-        .card {
-            width: 100px;
-            height: 100px;
-            background: #444;
-            color: white;
-            font-size: 35px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            cursor: pointer;
-        }
-        .flipped { background: white; color: black; }
+        @import url('https://fonts.googleapis.com/css2?family=Roboto:wght@400;700&display=swap');
 
-        button, select {
-            margin: 5px;
-            padding: 8px;
-            font-size: 14px;
+        body {
+            font-family: 'Roboto', sans-serif;
+            margin:0;
+            padding:0;
+            background: #f2f2f2;
+            color:#333;
+            display:flex;
+            flex-direction:column;
+            align-items:center;
+            min-height:100vh;
         }
+
+        h1,h2,h3 { margin:10px; color:#222; }
+
+        .start-menu, .game-container {
+            width:90%;
+            max-width:800px;
+            text-align:center;
+            background: #ffffff;
+            border-radius:20px;
+            padding:30px;
+            box-shadow:0 8px 20px rgba(0,0,0,0.2);
+            margin-top:40px;
+            position:relative;
+        }
+
+        button, select, textarea, input[type=number] {
+            margin:5px;
+            padding:10px 15px;
+            font-size:16px;
+            border-radius:8px;
+            border:1px solid #ccc;
+            cursor:pointer;
+            transition: all 0.2s;
+        }
+
+        button:hover {
+            transform: scale(1.05);
+            background-color:#555;
+            color:#fff;
+        }
+
+        select, textarea, input[type=number] {width:200px; box-sizing:border-box;}
+
+        #customInput {
+            width: 100%;
+            min-height: 80px;
+            font-size:16px;
+            padding:10px;
+            border-radius:8px;
+            border:1px solid #ccc;
+            box-sizing:border-box;
+            resize:vertical;
+        }
+
+        .grid {
+            display:grid;
+            grid-template-columns: repeat(4, 100px);
+            gap:15px;
+            justify-content:center;
+            margin-top:20px;
+        }
+
+        /* Card Flip */
+        .card {
+            width:100px;
+            height:100px;
+            perspective:1000px;
+            cursor:pointer;
+        }
+
+        .card-inner {
+            position:relative;
+            width:100%;
+            height:100%;
+            transition: transform 0.5s;
+            transform-style: preserve-3d;
+        }
+
+        .card.flipped .card-inner {
+            transform: rotateY(180deg);
+        }
+
+        .card-front, .card-back {
+            position:absolute;
+            width:100%;
+            height:100%;
+            border-radius:15px;
+            display:flex;
+            align-items:center;
+            justify-content:center;
+            backface-visibility:hidden;
+            font-size:35px;
+            box-shadow:0 4px 10px rgba(0,0,0,0.2);
+        }
+
+        .card-front {
+            background-color: #fff; /* Backup-Farbe, falls Bild nicht lädt */
+            background-image: url('../../Projektmanagement-Memory/Logo.png'); /* Hier dein Logo einfügen */
+            background-size: cover;       /* Logo skaliert auf volle Fläche */
+            background-position: center;  /* Logo mittig */
+            border-radius:15px;
+            box-shadow:0 4px 10px rgba(0,0,0,0.2);
+        }
+        .card-back { background:#ffeb3b; color:#111; transform:rotateY(180deg); }
+
+        #timerBlock {
+            margin:20px auto;
+            width:220px;
+            padding:15px;
+            border:2px solid #ccc;
+            border-radius:15px;
+            background:#f9f9f9;
+            text-align:center;
+        }
+
+        #resetBtn { background-color:#ff4c4c; color:#fff; }
+        #resetBtn:hover { background-color:#ff0000; }
     </style>
 </head>
 <body>
 
-<h1>Memory Game</h1>
+<!-- Startmenü -->
+<div class="start-menu" id="startMenu">
+    <!-- Logo links oben -->
+    <img src="../../Projektmanagement-Memory/Logo.png" alt="Flip & Learn Logo" style="position:absolute; top:15px; left:15px; width:120px; height:auto;"><!-- Info Button rechts oben -->
+    <button id="infoBtn" style="
+        position:absolute;
+        top:15px;
+        right:15px;
+        border-radius:12px;
+        padding:5px 10px;
+        font-weight:bold;
+        font-size:14px;
+        border:1px solid #ccc;
+        background:#f9f9f9;
+        cursor:pointer;
+    ">Anleitung</button>
 
-<select id="mode">
-    <option value="single">Singleplayer</option>
-    <option value="1v1">1v1</option>
-    <option value="2v2">2v2</option>
-</select>
+    <h1>Flip & Learn</h1>
+    <p>Wähle den Spielmodus:</p>
+    <select id="modeSelect">
+        <option value="single">Singleplayer</option>
+        <option value="1v1">1v1</option>
+        <option value="2v2">1v1v1v1</option>
+    </select>
+    <p>Eigene Memory-Paare sind Pflicht! (Format: z.B. Hauptstadt Peru:Lima, Berlin:Deutschland)</p>
+    <textarea id="customInput" placeholder="Eigene Karten eingeben" required></textarea>
+    <br>
+    <button onclick="startGame()">Spiel starten</button>
+</div>
 
-<h2 id="player">Spieler 1 ist dran</h2>
-<h3 id="score">Punkte: 0</h3>
-<h3 id="round">Rundenpunkte: 0</h3>
+<!-- Overlay für Anleitung -->
+<div id="infoOverlay" style="
+      display:none;
+      position:fixed;
+      top:0; left:0; width:100%; height:100%;
+      background: rgba(0,0,0,0.6);
+      z-index:1000;
+      display:flex;
+      justify-content:center;
+      align-items:flex-start;
+      padding-top:60px;
+    ">
+    <div style="
+        background:#fff;
+        padding:25px;
+        border-radius:20px;
+        max-width:500px;
+        text-align:left;
+        position:relative;
+        box-shadow: 0 5px 15px rgba(0,0,0,0.3);
+      ">
+        <button onclick="closeInfo()" style="
+        position:absolute;
+        top:10px;
+        right:10px;
+        border:none;
+        background:#ff4c4c;
+        color:#fff;
+        font-weight:bold;
+        border-radius:12px;
+        padding:5px 10px;
+        cursor:pointer;
+        font-size:14px;
+      ">Schließen</button>
+        <h2>Anleitung: Flip & Learn</h2>
+        <p>
+            Willkommen zu Flip & Learn! 🎉<br><br>
+            1. Wähle zuerst den Spielmodus: Singleplayer, 1v1 oder 1v1v1v1.<br>
+            2. Gib deine eigenen Memory-Paare ein (z.B. „Hauptstadt Peru:Lima, Berlin:Deutschland“).<br>
+            3. Klicke auf „Spiel starten“.<br>
+            4. Klicke auf die Karten, um Paare zu finden.<br>
+            5. Punkte werden gezählt; Timer läuft nur in 1v1/1v1v1v1.<br>
+            6. „Doppelt oder Nichts“ gibt Risiko für zusätzliche Punkte.<br>
+            7. Das Spiel endet, wenn alle Paare aufgedeckt sind.<br>
+            8. Reset bringt dich zurück zur Startseite.<br><br>
+            Viel Spaß beim Lernen! 🧠🎮
+        </p>
+    </div>
+</div>
 
-<button onclick="doubleOrNothing()">Doppelt oder Nichts</button>
-<button onclick="bankPoints()">Punkte sichern</button>
+<!-- Spielbereich -->
+<div class="game-container" id="gameContainer" style="display:none;">
+    <h2 id="player">Spieler 1 ist dran</h2>
+    <h3 id="score">Punkte: 0</h3>
 
-<h3>Eigene Memorys erstellen (mit Komma trennen)</h3>
-<input type="text" id="customInput"
-       placeholder="z.B. 🍎,🚗,🐶,⚽">
-<button onclick="createCustomGame()">Start mit eigenen Karten</button>
+    <button onclick="doubleOrNothing()">Doppelt oder Nichts</button>
+    <button id="resetBtn" onclick="resetGame()">Zurück zur Startseite</button>
 
-<div class="grid" id="grid"></div>
+    <div id="timerBlock" style="display:none;">
+        <label for="turnTime">Zeit pro Zug (Sekunden):</label><br>
+        <input type="number" id="turnTime" value="10" min="1" style="width:80px; margin-top:5px;"><br>
+        <h3 id="timerDisplay" style="margin-top:10px;">Verbleibende Zeit: 0</h3>
+    </div>
+
+    <div class="grid" id="grid"></div>
+</div>
+
 <script>
-    let baseSymbols = ["🍎","🚗","🐶","⚽","🎲","🎵","🌟","🍕"];
-    let symbols = [...baseSymbols, ...baseSymbols];
-    symbols.sort(() => 0.5 - Math.random());
+    // Info Overlay
+    document.getElementById("infoBtn").addEventListener("click", ()=>{ document.getElementById("infoOverlay").style.display="flex"; });
+    function closeInfo(){ document.getElementById("infoOverlay").style.display="none"; }
 
-    let firstCard = null;
-    let secondCard = null;
-    let lock = false;
+    // Spielvariablen
+    let turnTimer, timeLeft, firstCard=null, secondCard=null, lock=false;
+    let currentPlayer=1, scores=[0,0,0,0], canDouble=false, riskActive=false, symbols=[];
 
-    let currentPlayer = 1;
-    let scores = [0,0,0,0];
+    const grid=document.getElementById("grid");
+    const timerBlock=document.getElementById("timerBlock");
+    const modeSelect=document.getElementById("modeSelect");
 
-    let canDouble = false;
-    let riskActive = false;
+    // Start Game
+    function startGame(){
+        let input = document.getElementById("customInput").value.trim();
+        if(!input){ alert("Bitte eigene Memory-Paare eingeben!"); return; }
 
-    const grid = document.getElementById("grid");
+        document.getElementById("startMenu").style.display="none";
+        document.getElementById("gameContainer").style.display="block";
 
-    function buildBoard(symbolArray) {
-        grid.innerHTML = "";
-        symbolArray.sort(() => 0.5 - Math.random());
+        // Timer auf 10 Sekunden initialisieren
+        document.getElementById("turnTime").value = 10;
+        document.getElementById("timerDisplay").innerText = "Verbleibende Zeit: 10";
 
-        symbolArray.forEach(symbol => {
-            const card = document.createElement("div");
-            card.classList.add("card");
-            card.dataset.symbol = symbol;
-            card.innerText = "";
+        const mode = modeSelect.value;
+        if(mode==="1v1"||mode==="2v2") timerBlock.style.display="block";
+        else timerBlock.style.display="none"; // bei Singleplayer ausblenden
 
-            card.addEventListener("click", () => handleClick(card, symbol));
+        createCustomGame();
+    }
 
+    // Reset
+    function resetGame(){
+        clearInterval(turnTimer);
+        firstCard=null; secondCard=null; lock=false;
+        scores=[0,0,0,0]; currentPlayer=1; riskActive=false; canDouble=false;
+        document.getElementById("gameContainer").style.display="none";
+        document.getElementById("startMenu").style.display="block";
+        timerBlock.style.display="none";
+    }
+
+    // Custom Game
+    function createCustomGame(){
+        scores=[0,0,0,0]; currentPlayer=1; firstCard=null; secondCard=null; lock=false; canDouble=false; riskActive=false;
+        updatePlayer(); updateScore();
+        let input=document.getElementById("customInput").value.trim();
+        let items=input.split(",").map(i=>i.trim()).filter(i=>i!=="");
+        let newSymbols=[];
+        items.forEach((pair,index)=>{
+            let [first,second]=pair.split(":").map(x=>x.trim());
+            if(!first||!second) return;
+            newSymbols.push({symbol:first,set:"C"+index});
+            newSymbols.push({symbol:second,set:"C"+index});
+        });
+        symbols=newSymbols.map(o=>o.symbol);
+        newSymbols.sort(()=>0.5-Math.random());
+        buildBoard(newSymbols);
+        const mode = modeSelect.value;
+        if(mode==="1v1"||mode==="2v2") startTurnTimer();
+    }
+
+    // Build Board
+    function buildBoard(cardArray){
+        grid.innerHTML="";
+        cardArray.forEach(obj=>{
+            const card=document.createElement("div"); card.classList.add("card"); card.dataset.set=obj.set;
+            const inner=document.createElement("div"); inner.classList.add("card-inner");
+            const front=document.createElement("div"); front.classList.add("card-front");
+            const back=document.createElement("div"); back.classList.add("card-back"); back.innerText=obj.symbol;
+            inner.appendChild(front); inner.appendChild(back); card.appendChild(inner);
+            card.addEventListener("click",()=>handleClick(card));
             grid.appendChild(card);
         });
     }
 
-    function handleClick(card, symbol) {
-        if (lock || card.innerText !== "") return;
-
-        card.innerText = symbol;
+    // Handle Click
+    function handleClick(card){
+        if(lock || card.classList.contains("flipped")) return;
         card.classList.add("flipped");
-
-        if (!firstCard) {
-            firstCard = card;
-        } else {
-            secondCard = card;
-            lock = true;
-
-            if (firstCard.dataset.symbol === secondCard.dataset.symbol) {
-
-                scores[currentPlayer - 1]++;
-
-                if (riskActive) {
-                    scores[currentPlayer - 1]++;
-                    riskActive = false;
-                }
-
-                canDouble = true;
-                updateScore();
-                resetTurn();
-
+        if(!firstCard){ firstCard=card; } else {
+            secondCard=card; lock=true;
+            if(firstCard.dataset.set === secondCard.dataset.set){
+                scores[currentPlayer-1]++;
+                if(riskActive){scores[currentPlayer-1]++; riskActive=false;}
+                canDouble=true; updateScore(); resetTurn(); checkGameEnd();
             } else {
-                setTimeout(() => {
-                    firstCard.innerText = "";
-                    secondCard.innerText = "";
-                    firstCard.classList.remove("flipped");
-                    secondCard.classList.remove("flipped");
-
-                    if (riskActive) {
-                        scores[currentPlayer - 1]--;
-                        if (scores[currentPlayer - 1] < 0)
-                            scores[currentPlayer - 1] = 0;
-                    }
-
-                    riskActive = false;
-                    canDouble = false;
-                    nextPlayer();
-                    updateScore();
-                    resetTurn();
-
-                }, 800);
+                setTimeout(()=>{
+                    firstCard.classList.remove("flipped"); secondCard.classList.remove("flipped");
+                    if(riskActive){ scores[currentPlayer-1]--; if(scores[currentPlayer-1]<0) scores[currentPlayer-1]=0; }
+                    riskActive=false; canDouble=false; nextPlayer(); updateScore(); resetTurn();
+                },800);
             }
         }
     }
 
-
-
-    function resetTurn() {
-        firstCard = null;
-        secondCard = null;
-        lock = false;
-    }
-
-    function nextPlayer() {
-        const mode = document.getElementById("mode").value;
-
-        if (mode === "single") return;
-
-        if (mode === "1v1") {
-            currentPlayer = currentPlayer === 1 ? 2 : 1;
-        }
-
-        if (mode === "2v2") {
-            currentPlayer++;
-            if (currentPlayer > 4) currentPlayer = 1;
-        }
-
+    function resetTurn(){firstCard=null; secondCard=null; lock=false;}
+    function nextPlayer(){
+        const mode=modeSelect.value;
+        if(mode==="single") return;
+        if(mode==="1v1") currentPlayer=currentPlayer===1?2:1;
+        if(mode==="2v2"){currentPlayer++; if(currentPlayer>4) currentPlayer=1;}
         updatePlayer();
     }
 
-    function updatePlayer() {
-        document.getElementById("player").innerText =
-            "Spieler " + currentPlayer + " ist dran";
+    function updatePlayer(){document.getElementById("player").innerText="Spieler "+currentPlayer+" ist dran";}
+    function updateScore(){
+        const mode=modeSelect.value;
+        if(mode==="single") document.getElementById("score").innerText="Gesamtpunkte: "+scores[0];
+        if(mode==="1v1") document.getElementById("score").innerText="P1: "+scores[0]+" | P2: "+scores[1];
+        if(mode==="2v2") document.getElementById("score").innerText="P1: "+scores[0]+" | P2: "+scores[1]+" | P3: "+scores[2]+" | P4: "+scores[3];
     }
 
-    function updateScore() {
-        const mode = document.getElementById("mode").value;
-
-        if (mode === "single") {
-            document.getElementById("score").innerText =
-                "Gesamtpunkte: " + scores[0];
-        }
-
-        if (mode === "1v1") {
-            document.getElementById("score").innerText =
-                "P1: " + scores[0] +
-                " | P2: " + scores[1];
-        }
-
-        if (mode === "2v2") {
-            document.getElementById("score").innerText =
-                "P1: " + scores[0] +
-                " | P2: " + scores[1] +
-                " | P3: " + scores[2] +
-                " | P4: " + scores[3];
-        }
+    // Timer
+    function startTurnTimer(){
+        clearInterval(turnTimer);
+        const seconds = parseInt(document.getElementById("turnTime").value)||10;
+        timeLeft = seconds;
+        document.getElementById("timerDisplay").innerText="Verbleibende Zeit: "+timeLeft;
+        turnTimer = setInterval(()=>{
+            timeLeft--;
+            document.getElementById("timerDisplay").innerText="Verbleibende Zeit: "+timeLeft;
+            if(timeLeft<=0){ clearInterval(turnTimer); nextPlayer(); startTurnTimer(); }
+        },1000);
     }
 
-    function doubleOrNothing() {
-        if (canDouble && !riskActive) {
-            riskActive = true;
-            canDouble = false;
-        }
+    function doubleOrNothing(){if(canDouble && !riskActive){riskActive=true; canDouble=false;}}
+
+    // Game End
+    function checkGameEnd(){
+        const totalPairs = symbols.length/2;
+        const foundPairs = document.querySelectorAll(".card.flipped").length/2;
+        if(foundPairs>=totalPairs){ clearInterval(turnTimer); setTimeout(()=>{ alert("Spiel beendet! Gewinner: "+getWinner()); },300); }
     }
 
-    function createCustomGame() {
-        let input = document.getElementById("customInput").value.trim();
-        if (!input) {
-            alert("Bitte Werte eingeben!");
-            return;
+    function getWinner(){
+        const mode=modeSelect.value;
+        if(mode==="single") return "Spieler 1";
+        if(mode==="1v1") return scores[0]===scores[1]?"Unentschieden":(scores[0]>scores[1]?"Spieler 1":"Spieler 2");
+        if(mode==="2v2"){
+            const max=Math.max(...scores); const winners=[];
+            scores.forEach((s,i)=>{if(s===max) winners.push("Spieler "+(i+1));});
+            return winners.join(", ");
         }
-
-        // Input: "Frage1:Antwort1,Frage2:Antwort2"
-        let items = input.split(",").map(i => i.trim()).filter(i => i !== "");
-        if (items.length < 1) {
-            alert("Mindestens 1 Karte eingeben!");
-            return;
-        }
-
-        // Neues Kartenarray bauen
-        let newSymbols = [];
-        items.forEach((pair, index) => {
-            let [front, back] = pair.split(":").map(x => x.trim());
-            if (!front || !back) return;
-
-            // Paar erstellen (wie normale Paare)
-            newSymbols.push({symbol: front, answer: back, set: "C" + index});
-            newSymbols.push({symbol: front, answer: back, set: "C" + index});
-        });
-
-        // Spielzustand zurücksetzen
-        scores = [0, 0, 0, 0];
-        currentPlayer = 1;
-        firstCard = null;
-        lock = false;
-        canDouble = false;
-        riskActive = false;
-        updatePlayer();
-        updateScore();
-
-        // Board bauen
-        grid.innerHTML = "";
-        newSymbols.sort(() => 0.5 - Math.random());
-
-        newSymbols.forEach(obj => {
-            const card = document.createElement("div");
-            card.classList.add("card");
-            card.dataset.set = obj.set;
-            card.dataset.symbol = obj.symbol;
-            card.dataset.answer = obj.answer;
-            card.innerText = "";
-
-            card.addEventListener("click", () => {
-                if (lock || card.innerText !== "") return;
-
-                card.innerText = obj.answer; // Antwort beim Aufdecken
-                card.classList.add("flipped");
-
-                if (!firstCard) {
-                    firstCard = card;
-                } else {
-                    if (firstCard.dataset.answer === card.dataset.answer) {
-                        // Treffer → Punkte zählen wie vorher
-                        scores[currentPlayer - 1]++;
-                        if (riskActive) {
-                            scores[currentPlayer - 1]++;
-                            riskActive = false;
-                        }
-                        canDouble = true;
-                        updateScore();
-                        firstCard = null;
-                    } else {
-                        // Falsches Paar → beide schließen sich
-                        lock = true;
-                        setTimeout(() => {
-                            firstCard.innerText = "";
-                            card.innerText = "";
-                            firstCard.classList.remove("flipped");
-                            card.classList.remove("flipped");
-                            firstCard = null;
-                            lock = false;
-                            nextPlayer();
-                        }, 800);
-                    }
-                }
-            });
-
-            grid.appendChild(card);
-        });
     }
 </script>
 
